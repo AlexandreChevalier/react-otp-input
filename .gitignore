@@ -1,6 +1,14 @@
 node_modules
 /lib
-demo
+/demo
 
 # Editor config
 .vscode
+
+
+# docz
+.docz
+
+.nyc_output
+coverage
+*.lcov

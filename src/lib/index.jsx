@@ -6,6 +6,7 @@ const BACKSPACE = 8;
 const LEFT_ARROW = 37;
 const RIGHT_ARROW = 39;
 const DELETE = 46;
+const SPACEBAR = 32;
 
 type Props = {
   numInputs: number,
@@ -14,15 +15,25 @@ type Props = {
   containerStyle?: Object,
   inputStyle?: Object,
   focusStyle?: Object,
-  disabled?: boolean,
+  isDisabled?: boolean,
   disabledStyle?: Object,
+  hasErrored?: boolean,
+  errorStyle?: Object,
   shouldAutoFocus?: boolean,
+  isInputNum?: boolean,
+  value?: string,
 };
 
 type State = {
   activeInput: number,
   otp: string[],
 };
+
+// Doesn't really check if it's a style Object
+// Basic implementation to check if it's not a string
+// of classNames and is an Object
+// TODO: Better implementation
+const isStyleObject = obj => typeof obj === 'object';
 
 class SingleOtpInput extends PureComponent<*> {
   input: ?HTMLInputElement;
@@ -54,33 +65,52 @@ class SingleOtpInput extends PureComponent<*> {
     }
   }
 
+  getClasses = (...classes) =>
+    classes.filter(c => !isStyleObject(c) && c !== false).join(' ');
+
   render() {
     const {
       separator,
       isLastChild,
       inputStyle,
       focus,
-      disabled,
+      isDisabled,
+      hasErrored,
+      errorStyle,
       focusStyle,
       disabledStyle,
+      shouldAutoFocus,
+      isInputNum,
+      value,
       ...rest
     } = this.props;
+
+    const numValueLimits = isInputNum ? { min: 0, max: 9 } : {};
 
     return (
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <input
           style={Object.assign(
             { width: '1em', textAlign: 'center' },
+            isStyleObject(inputStyle) && inputStyle,
+            focus && isStyleObject(focusStyle) && focusStyle,
+            isDisabled && isStyleObject(disabledStyle) && disabledStyle,
+            hasErrored && isStyleObject(errorStyle) && errorStyle
+          )}
+          className={this.getClasses(
             inputStyle,
             focus && focusStyle,
-            disabled && disabledStyle
+            isDisabled && disabledStyle,
+            hasErrored && errorStyle
           )}
-          type="tel"
+          type={isInputNum ? 'number' : 'tel'}
+          {...numValueLimits}
           maxLength="1"
           ref={input => {
             this.input = input;
           }}
-          disabled={disabled}
+          disabled={isDisabled}
+          value={value ? value : ''}
           {...rest}
         />
         {!isLastChild && separator}
@@ -93,18 +123,23 @@ class OtpInput extends Component<Props, State> {
   static defaultProps = {
     numInputs: 4,
     onChange: (otp: number): void => console.log(otp),
-    disabled: false,
+    isDisabled: false,
     shouldAutoFocus: false,
+    value: '',
   };
 
   state = {
     activeInput: 0,
-    otp: [],
   };
 
+  getOtpValue = () =>
+    this.props.value ? this.props.value.toString().split('') : [];
+
   // Helper to return OTP from input
-  getOtp = () => {
-    this.props.onChange(this.state.otp.join(''));
+  handleOtpChange = (otp: string[]) => {
+    const { onChange, isInputNum } = this.props;
+    const otpValue = otp.join('');
+    onChange(isInputNum ? Number(otpValue) : otpValue);
   };
 
   // Focus on input by index
@@ -112,9 +147,7 @@ class OtpInput extends Component<Props, State> {
     const { numInputs } = this.props;
     const activeInput = Math.max(Math.min(numInputs - 1, input), 0);
 
-    this.setState({
-      activeInput,
-    });
+    this.setState({ activeInput });
   };
 
   // Focus on next input
@@ -131,20 +164,19 @@ class OtpInput extends Component<Props, State> {
 
   // Change OTP value at focused input
   changeCodeAtFocus = (value: string) => {
-    const { activeInput, otp } = this.state;
-    otp[activeInput] = value;
+    const { activeInput } = this.state;
+    const otp = this.getOtpValue();
+    otp[activeInput] = value[0];
 
-    this.setState({
-      otp,
-    });
-    this.getOtp();
+    this.handleOtpChange(otp);
   };
 
   // Handle pasted OTP
   handleOnPaste = (e: Object) => {
     e.preventDefault();
     const { numInputs } = this.props;
-    const { activeInput, otp } = this.state;
+    const { activeInput } = this.state;
+    const otp = this.getOtpValue();
 
     // Get pastedData in an array of max size (num of inputs - current position)
     const pastedData = e.clipboardData
@@ -159,11 +191,7 @@ class OtpInput extends Component<Props, State> {
       }
     }
 
-    this.setState({
-      otp,
-    });
-
-    this.getOtp();
+    this.handleOtpChange(otp);
   };
 
   handleOnChange = (e: Object) => {
@@ -171,42 +199,48 @@ class OtpInput extends Component<Props, State> {
     this.focusNextInput();
   };
 
-  // Handle cases of backspace, delete, left arrow, right arrow
+  // Handle cases of backspace, delete, left arrow, right arrow, space
   handleOnKeyDown = (e: Object) => {
-    switch (e.keyCode) {
-      case BACKSPACE:
-        e.preventDefault();
-        this.changeCodeAtFocus('');
-        this.focusPrevInput();
-        break;
-      case DELETE:
-        e.preventDefault();
-        this.changeCodeAtFocus('');
-        break;
-      case LEFT_ARROW:
-        e.preventDefault();
-        this.focusPrevInput();
-        break;
-      case RIGHT_ARROW:
-        e.preventDefault();
-        this.focusNextInput();
-        break;
-      default:
-        break;
+    if (e.keyCode === BACKSPACE || e.key === 'Backspace') {
+      e.preventDefault();
+      this.changeCodeAtFocus('');
+      this.focusPrevInput();
+    } else if (e.keyCode === DELETE || e.key === 'Delete') {
+      e.preventDefault();
+      this.changeCodeAtFocus('');
+    } else if (e.keyCode === LEFT_ARROW || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      this.focusPrevInput();
+    } else if (e.keyCode === RIGHT_ARROW || e.key === 'ArrowRight') {
+      e.preventDefault();
+      this.focusNextInput();
+    } else if (e.keyCode === SPACEBAR || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+    }
+  };
+
+  checkLength = (e: Object) => {
+    if (e.target.value.length > 1) {
+      e.preventDefault();
+      this.focusNextInput();
     }
   };
 
   renderInputs = () => {
-    const { activeInput, otp } = this.state;
+    const { activeInput } = this.state;
     const {
       numInputs,
       inputStyle,
       focusStyle,
       separator,
-      disabled,
+      isDisabled,
       disabledStyle,
+      hasErrored,
+      errorStyle,
       shouldAutoFocus,
+      isInputNum,
     } = this.props;
+    const otp = this.getOtpValue();
     const inputs = [];
 
     for (let i = 0; i < numInputs; i++) {
@@ -217,20 +251,23 @@ class OtpInput extends Component<Props, State> {
           value={otp && otp[i]}
           onChange={this.handleOnChange}
           onKeyDown={this.handleOnKeyDown}
+          onInput={this.checkLength}
           onPaste={this.handleOnPaste}
           onFocus={e => {
-            this.setState({
-              activeInput: i,
-            });
+            this.setState({ activeInput: i });
             e.target.select();
           }}
+          onBlur={() => this.setState({ activeInput: -1 })}
           separator={separator}
           inputStyle={inputStyle}
           focusStyle={focusStyle}
           isLastChild={i === numInputs - 1}
-          disabled={disabled}
+          isDisabled={isDisabled}
           disabledStyle={disabledStyle}
+          hasErrored={hasErrored}
+          errorStyle={errorStyle}
           shouldAutoFocus={shouldAutoFocus}
+          isInputNum={isInputNum}
         />
       );
     }
@@ -242,7 +279,13 @@ class OtpInput extends Component<Props, State> {
     const { containerStyle } = this.props;
 
     return (
-      <div style={{ display: 'flex', ...containerStyle }}>
+      <div
+        style={Object.assign(
+          { display: 'flex' },
+          isStyleObject(containerStyle) && containerStyle
+        )}
+        className={!isStyleObject(containerStyle) ? containerStyle : ''}
+      >
         {this.renderInputs()}
       </div>
     );

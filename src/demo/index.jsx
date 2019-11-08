@@ -11,6 +11,8 @@ class Demo extends Component {
       numInputs: 4,
       separator: '-',
       isDisabled: false,
+      hasErrored: false,
+      isInputNum: false,
     };
   }
 
@@ -22,8 +24,13 @@ class Demo extends Component {
     this.setState({ [e.target.name]: e.target.value });
   };
 
-  handleCheck = () => {
-    this.setState(prevState => ({ isDisabled: !prevState.isDisabled }));
+  clearOtp = () => {
+    this.setState({ otp: '' });
+  };
+
+  handleCheck = e => {
+    const { name } = e.target;
+    this.setState(prevState => ({ [name]: !prevState[name] }));
   };
 
   handleSubmit = e => {
@@ -32,7 +39,7 @@ class Demo extends Component {
   };
 
   render() {
-    const { otp, numInputs, separator, isDisabled } = this.state;
+    const { otp, numInputs, separator, isDisabled, hasErrored, isInputNum } = this.state;
 
     return (
       <div className="container">
@@ -44,25 +51,39 @@ class Demo extends Component {
           </a>
           <div className="side-bar__segment">
             <label htmlFor="num-inputs">
-              Number of inputs:
+              numInputs
               <input
                 id="num-inputs"
                 name="numInputs"
                 type="number"
                 value={numInputs}
                 onChange={this.handleChange}
+                min="0"
               />
             </label>
           </div>
           <div className="side-bar__segment">
             <label htmlFor="separator">
-              Separator
+              separator
               <input
                 id="separator"
                 maxLength={1}
                 name="separator"
                 type="text"
                 value={separator}
+                onChange={this.handleChange}
+              />
+            </label>
+          </div>
+          <div className="side-bar__segment">
+            <label htmlFor="value">
+              value
+              <input
+                id="value"
+                maxLength={numInputs}
+                name="otp"
+                type="text"
+                value={otp}
                 onChange={this.handleChange}
               />
             </label>
@@ -76,7 +97,31 @@ class Demo extends Component {
                 checked={isDisabled}
                 onChange={this.handleCheck}
               />
-              Disabled
+              isDisabled
+            </label>
+          </div>
+          <div className="side-bar__segment">
+            <label htmlFor="hasErrored">
+              <input
+                id="hasErrored"
+                name="hasErrored"
+                type="checkbox"
+                checked={hasErrored}
+                onChange={this.handleCheck}
+              />
+              hasErrored
+            </label>
+          </div>
+          <div className="side-bar__segment">
+            <label htmlFor="isInputNum">
+              <input
+                id="isInputNum"
+                name="isInputNum"
+                type="checkbox"
+                checked={isInputNum}
+                onChange={this.handleCheck}
+              />
+              isInputNum
             </label>
           </div>
           <div className="side-bar__segment side-bar__segment--bottom">
@@ -88,30 +133,37 @@ class Demo extends Component {
         <div className="view">
           <div className="card">
             <form onSubmit={this.handleSubmit}>
-              <h2>Enter verification code</h2>
+              <p>Enter verification code</p>
               <div className="margin-top--small">
                 <OtpInput
-                  inputStyle={{
-                    width: '3rem',
-                    height: '3rem',
-                    margin: '0 1rem',
-                    fontSize: '2rem',
-                    borderRadius: 4,
-                    border: '1px solid rgba(0,0,0,0.3)',
-                  }}
+                  inputStyle="inputStyle"
                   numInputs={numInputs}
-                  disabled={isDisabled}
+                  isDisabled={isDisabled}
+                  hasErrored={hasErrored}
+                  errorStyle="error"
                   onChange={this.handleOtpChange}
                   separator={<span>{separator}</span>}
+                  isInputNum={isInputNum}
                   shouldAutoFocus
+                  value={otp}
                 />
               </div>
-              <button
-                className="btn margin-top--large"
-                disabled={otp.length < numInputs}
-              >
-                Get OTP
-              </button>
+              <div className="btn-row">
+                <button
+                  className="btn margin-top--large"
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={this.clearOtp}
+                >
+                  Clear
+                </button>
+                <button
+                  className="btn margin-top--large"
+                  disabled={otp.length < numInputs}
+                >
+                  Get OTP
+                </button>
+              </div>
             </form>
           </div>
         </div>
